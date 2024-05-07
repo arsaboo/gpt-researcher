@@ -6,6 +6,7 @@ import markdown
 from gpt_researcher.master.prompts import *
 from gpt_researcher.scraper.scraper import Scraper
 from gpt_researcher.utils.llm import *
+import litellm
 
 def get_retriever(retriever):
     """
@@ -66,7 +67,7 @@ async def choose_agent(query, cfg, parent_query=None):
     """
     query = f"{parent_query} - {query}" if parent_query else f"{query}"
     try:
-        response = await create_chat_completion(
+        response = await litellm.completion(
             model=cfg.smart_llm_model,
             messages=[
                 {"role": "system", "content": f"{auto_agent_instructions()}"},
@@ -93,7 +94,7 @@ async def get_sub_queries(query: str, agent_role_prompt: str, cfg, parent_query:
 
     """
     max_research_iterations = cfg.max_iterations if cfg.max_iterations else 1
-    response = await create_chat_completion(
+    response = await litellm.completion(
         model=cfg.smart_llm_model,
         messages=[
             {"role": "system", "content": f"{agent_role_prompt}"},
@@ -101,7 +102,11 @@ async def get_sub_queries(query: str, agent_role_prompt: str, cfg, parent_query:
         temperature=0,
         llm_provider=cfg.llm_provider
     )
-    sub_queries = json.loads(response)
+    try:
+        sub_queries = json.loads(response)
+    except json.JSONDecodeError:
+        print("Invalid JSON response:", response)
+    sub_queries = {}
     return sub_queries
 
 
@@ -190,7 +195,7 @@ async def summarize_url(query, raw_data, agent_role_prompt, cfg):
     """
     summary = ""
     try:
-        summary = await create_chat_completion(
+        summary = await litellm.completion(
             model=cfg.fast_llm_model,
             messages=[
                 {"role": "system", "content": f"{agent_role_prompt}"},
@@ -239,7 +244,7 @@ async def generate_report(
             f"{generate_prompt(query, context, cfg.report_format, cfg.total_words)}")
 
     try:
-        report = await create_chat_completion(
+        report = await litellm.completion(
             model=cfg.smart_llm_model,
             messages=[
                 {"role": "system", "content": f"{agent_role_prompt}"},
@@ -274,7 +279,7 @@ async def stream_output(type, output, websocket=None, logging=True):
 
 async def get_report_introduction(query, context, role, config, websocket=None):
     try:
-        introduction = await create_chat_completion(
+        introduction = await litellm.completion(
             model=config.smart_llm_model,
             messages=[
                 {"role": "system", "content": f"{role}"},

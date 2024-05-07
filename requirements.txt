@@ -26,6 +26,7 @@ langchain-openai
 mistune
 python-docx
 htmldocx
+litellm
 langchain-google-genai
 lxml[html_clean]
 websockets
